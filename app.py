@@ -18,13 +18,29 @@ NICHE_TOPICS = [
     "Online Sales Boosting Strategies"
 ]
 
-def get_working_groq_model(client):
+def generate_with_groq(client, prompt, max_tok=300):
     models = client.models.list().data
-    for m in models:
-        lower_id = m.id.lower()
-        if any(name in lower_id for name in ["llama", "qwen", "gemma", "mixtral"]) and not any(skip in lower_id for skip in ["guard", "whisper", "tts", "audio", "embed"]):
-            return m.id
-    return models[0].id
+    # সব চালু টেক্সট মডেল খুঁজে বের করা
+    candidate_models = [
+        m.id for m in models
+        if any(k in m.id.lower() for k in ["llama", "gemma", "mixtral", "qwen"])
+        and not any(s in m.id.lower() for s in ["guard", "whisper", "tts", "audio", "embed", "vision"])
+    ]
+    
+    last_err = None
+    for model_id in candidate_models:
+        try:
+            res = client.chat.completions.create(
+                model=model_id,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tok,
+                temperature=0.7
+            )
+            return res.choices[0].message.content.strip(), model_id
+        except Exception as e:
+            last_err = e
+            continue
+    raise Exception(f"All models failed. Last error: {last_err}")
 
 @app.route("/")
 def home():
@@ -37,22 +53,17 @@ def auto_post():
 
     try:
         groq_client = Groq(api_key=GROQ_API_KEY)
-        active_model = get_working_groq_model(groq_client)
         topic = random.choice(NICHE_TOPICS)
 
-        caption_res = groq_client.chat.completions.create(
-            model=active_model,
-            messages=[{"role": "user", "content": f"Write an engaging Instagram post in Bengali about '{topic}' with 3 bullet points and 5 hashtags. Output ONLY the post."}]
-        )
-        caption = caption_res.choices[0].message.content.strip()
+        # ১. ক্যাপশন তৈরি (মাত্র ৩০০ টোকেনের মধ্যে)
+        caption_prompt = f"Write an engaging Instagram post in Bengali about '{topic}' with 3 short bullet points and 5 hashtags. Output ONLY the post."
+        caption, used_model = generate_with_groq(groq_client, caption_prompt, max_tok=300)
 
-        img_res = groq_client.chat.completions.create(
-            model=active_model,
-            messages=[{"role": "user", "content": f"Write a 10-word English image prompt for a modern 3D illustration about: {topic}. Output ONLY the prompt."}]
-        )
-        image_prompt = urllib.parse.quote(img_res.choices[0].message.content.strip())
+        # ২. ছবির লিংক তৈরি
+        image_prompt = urllib.parse.quote(f"modern 3d illustration of {topic}, vibrant colors, minimal")
         image_url = f"https://image.pollinations.ai/prompt/{image_prompt}?width=1080&height=1080&seed={random.randint(1,99999)}&nologo=true"
 
+        # ৩. Webhook থাকলে সেখানে পাঠানো
         webhook_status = "Not connected yet"
         if MAKE_WEBHOOK_URL:
             requests.post(MAKE_WEBHOOK_URL, json={"caption": caption, "image_url": image_url})
@@ -62,9 +73,10 @@ def auto_post():
         <html>
         <body style="font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto;">
             <h2 style="color: green;">AI Post Generated Successfully!</h2>
+            <p><b>Model Used:</b> {used_model}</p>
             <p><b>Webhook Status:</b> {webhook_status}</p>
             <img src="{image_url}" style="width: 100%; border-radius: 10px;" />
-            <h3>Generated Caption:</h3>
+            <h3>Generated Bengali Caption:</h3>
             <div style="background: #f4f4f4; padding: 15px; border-radius: 8px; white-space: pre-wrap;">{caption}</div>
         </body>
         </html>
