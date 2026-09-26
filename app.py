@@ -13,6 +13,18 @@ IG_USERNAME = os.environ.get("IG_USERNAME")
 IG_PASSWORD = os.environ.get("IG_PASSWORD")
 SECRET_PIN = os.environ.get("SECRET_PIN", "123456789")
 
+def get_working_groq_model(client):
+    # Groq-e bortomane je model-gulo chalu ache segulo khuje ber kora
+    models = client.models.list().data
+    available_ids = [m.id for m in models]
+    
+    # Pochonder text model khuje neya
+    for m_id in available_ids:
+        lower_id = m_id.lower()
+        if any(name in lower_id for name in ["llama", "qwen", "gemma", "mixtral", "deepseek"]) and not any(skip in lower_id for skip in ["guard", "whisper", "tts", "audio", "embed"]):
+            return m_id
+    return available_ids[0]
+
 @app.route("/")
 def home():
     return "Instagram AI Agent is Running!"
@@ -23,7 +35,6 @@ def auto_post():
         return jsonify({"error": "Wrong PIN!"}), 403
 
     try:
-        # ১. আগে চেক করা হচ্ছে সব Key ঠিকমতো দেওয়া আছে কি না
         if not GROQ_API_KEY or not IG_USERNAME or not IG_PASSWORD:
             return jsonify({
                 "error": "Environment Variables Missing!",
@@ -33,30 +44,34 @@ def auto_post():
             }), 400
 
         groq_client = Groq(api_key=GROQ_API_KEY)
+        active_model = get_working_groq_model(groq_client)
         topic = "Digital Marketing Tips for Small Business"
 
-        # ২. Groq দিয়ে ক্যাপশন তৈরি
+        # 1. Groq diye Bangla caption toiri
         caption_res = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=active_model,
             messages=[{"role": "user", "content": f"Write an engaging Instagram post in Bengali about '{topic}' with 3 bullet points and 5 hashtags. Output ONLY the post."}]
         )
         caption = caption_res.choices[0].message.content.strip()
 
-        # ৩. ছবি ডাউনলোড
+        # 2. Chobi download
         image_url = f"https://image.pollinations.ai/prompt/modern%203d%20digital%20marketing%20illustration?width=1080&height=1080&seed={random.randint(1,9999)}&nologo=true"
         img_data = requests.get(image_url, timeout=30).content
         with open("post.jpg", "wb") as f:
             f.write(img_data)
 
-        # ৪. Instagram লগইন ও পোস্ট
+        # 3. Instagram login o post
         cl = Client()
         cl.login(IG_USERNAME, IG_PASSWORD)
         media = cl.photo_upload("post.jpg", caption)
 
-        return jsonify({"status": "Posted to Instagram!", "media_id": str(media.pk)})
+        return jsonify({
+            "status": "Posted to Instagram!",
+            "used_model": active_model,
+            "media_id": str(media.pk)
+        })
 
     except Exception as e:
-        # কোনো ভুল হলে সেটি স্ক্রিনে পরিষ্কারভাবে দেখাবে
         return jsonify({
             "status": "Error Occurred",
             "exact_error": str(e)
