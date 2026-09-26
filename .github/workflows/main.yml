@@ -1,0 +1,28 @@
+name: AI Social Media Manager
+
+on:
+  schedule:
+    - cron: '30 4 * * *' # প্রতিদিন সকাল ১০টায় (ভারতীয় সময়) অটোমেটিক পোস্ট হবে
+  workflow_dispatch:     # যেকোনো সময় নিজে বাটন টিপে টেস্ট করার অপশন
+
+jobs:
+  post_to_social:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Libraries
+        run: pip install -r requirements.txt
+
+      - name: Run AI Agent
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+        run: python agent.py
