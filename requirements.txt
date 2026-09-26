@@ -2,3 +2,5 @@ flask
 gunicorn
 groq
 requests
+instagrapi
+pillow
