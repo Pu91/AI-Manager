@@ -38,7 +38,7 @@ def auto_post():
         active_model = get_working_groq_model(groq_client)
         topic = "Digital Marketing Tips for Small Business"
 
-        # ১. ক্যাপশন তৈরি
+        # ১. Groq দিয়ে বাংলা ক্যাপশন তৈরি
         caption_res = groq_client.chat.completions.create(
             model=active_model,
             messages=[{"role": "user", "content": f"Write an engaging Instagram post in Bengali about '{topic}' with 3 bullet points and 5 hashtags. Output ONLY the post."}]
@@ -51,10 +51,23 @@ def auto_post():
         with open("post.jpg", "wb") as f:
             f.write(img_data)
 
-        # ৩. স্থায়ী সেশন দিয়ে Instagram লগইন
+        # ৩. লেটেস্ট Instagram App Version সেট করে লগইন ও পোস্ট
         cl = Client()
+        cl.set_device({
+            "app_version": "365.0.0.35.96",
+            "android_version": 34,
+            "android_release": "14.0",
+            "dpi": "480dpi",
+            "resolution": "1080x2400",
+            "manufacturer": "Google",
+            "device": "husky",
+            "model": "Pixel 8 Pro",
+            "cpu": "tensor",
+            "version_code": "671234567"
+        })
+        cl.set_user_agent("Instagram 365.0.0.35.96 Android (34/14.0; 480dpi; 1080x2400; Google; Pixel 8 Pro; husky; tensor; en_IN; 671234567)")
         cl.set_locale("en_IN")
-        cl.set_timezone_offset(19800) # ভারতের টাইমজোন (যাতে ইরান না দেখায়)
+        cl.set_timezone_offset(19800)
 
         if IG_SESSION_ID:
             cl.login_by_sessionid(IG_SESSION_ID)
