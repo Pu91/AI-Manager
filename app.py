@@ -40,14 +40,12 @@ def auto_post():
         active_model = get_working_groq_model(groq_client)
         topic = random.choice(NICHE_TOPICS)
 
-        # ১. Groq AI দিয়ে বাংলা ক্যাপশন তৈরি
         caption_res = groq_client.chat.completions.create(
             model=active_model,
             messages=[{"role": "user", "content": f"Write an engaging Instagram post in Bengali about '{topic}' with 3 bullet points and 5 hashtags. Output ONLY the post."}]
         )
         caption = caption_res.choices[0].message.content.strip()
 
-        # ২. AI দিয়ে ছবির লিংক তৈরি
         img_res = groq_client.chat.completions.create(
             model=active_model,
             messages=[{"role": "user", "content": f"Write a 10-word English image prompt for a modern 3D illustration about: {topic}. Output ONLY the prompt."}]
@@ -55,17 +53,15 @@ def auto_post():
         image_prompt = urllib.parse.quote(img_res.choices[0].message.content.strip())
         image_url = f"https://image.pollinations.ai/prompt/{image_prompt}?width=1080&height=1080&seed={random.randint(1,99999)}&nologo=true"
 
-        # ৩. Make.com Webhook দেওয়া থাকলে সরাসরি Instagram/Facebook-এ পোস্ট করবে
         webhook_status = "Not connected yet"
         if MAKE_WEBHOOK_URL:
-             requests.post(MAKE_WEBHOOK_URL, json={"caption": caption, "image_url": image_url})
+            requests.post(MAKE_WEBHOOK_URL, json={"caption": caption, "image_url": image_url})
             webhook_status = "Sent to Instagram Webhook Successfully!"
 
-        # স্ক্রিনে সুন্দরভাবে ছবি ও ক্যাপশন দেখানো
         return f"""
         <html>
         <body style="font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto;">
-            <h2 style="color: green;">✅ AI Post Generated Successfully!</h2>
+            <h2 style="color: green;">AI Post Generated Successfully!</h2>
             <p><b>Webhook Status:</b> {webhook_status}</p>
             <img src="{image_url}" style="width: 100%; border-radius: 10px;" />
             <h3>Generated Caption:</h3>
