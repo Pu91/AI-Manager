@@ -14,7 +14,7 @@ IG_PASSWORD = os.environ.get("IG_PASSWORD")
 IG_SESSION_ID = os.environ.get("IG_SESSION_ID", "")
 SECRET_PIN = os.environ.get("SECRET_PIN", "123456789")
 
-SESSION_FILE = "ig_session.json"
+SESSION_FILE = "ig_session_v2.json"
 
 def get_working_groq_model(client):
     models = client.models.list().data
@@ -51,28 +51,15 @@ def auto_post():
         with open("post.jpg", "wb") as f:
             f.write(img_data)
 
-        # ৩. লেটেস্ট Instagram App Version সেট করে লগইন ও পোস্ট
+        # ৩. ডিফল্ট প্রোফাইল দিয়ে Instagram লগইন ও পোস্ট
         cl = Client()
-        cl.set_device({
-            "app_version": "365.0.0.35.96",
-            "android_version": 34,
-            "android_release": "14.0",
-            "dpi": "480dpi",
-            "resolution": "1080x2400",
-            "manufacturer": "Google",
-            "device": "husky",
-            "model": "Pixel 8 Pro",
-            "cpu": "tensor",
-            "version_code": "671234567"
-        })
-        cl.set_user_agent("Instagram 365.0.0.35.96 Android (34/14.0; 480dpi; 1080x2400; Google; Pixel 8 Pro; husky; tensor; en_IN; 671234567)")
         cl.set_locale("en_IN")
         cl.set_timezone_offset(19800)
 
         if IG_SESSION_ID:
             cl.login_by_sessionid(IG_SESSION_ID)
         elif os.path.exists(SESSION_FILE):
-            cl.load_settings(SESSION_FILE)
+            cl.load_settings(SESSION_FILE, override_app_version=True)
             cl.login(IG_USERNAME, IG_PASSWORD)
         else:
             cl.login(IG_USERNAME, IG_PASSWORD)
